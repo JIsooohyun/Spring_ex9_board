@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+<mapper namespace="QnaMapper">
+	<!-- query 조각 -->
+	<sql id="subRef">
+		(select ref from qna where num=#{num})
+	</sql>
+	<sql id="subStep">
+		(select step from qna where num=#{num}) 
+	</sql>
+	<!-- query 조각 -->
+	<insert id="setWrite" parameterType="QnaDTO">
+		<selectKey keyProperty="num" order="BEFORE" resultType="Integer"><!-- 밑에서 실행한 값을 keyProperty에 담아라  -->
+			select notice_seq.nextval from dual
+		</selectKey>
+		insert into qna values(#{num}, #{title}, #{writer}, #{contents}, sysdate, 0, #{num}, 0, 0)
+	</insert>
+	
+	<update id="setUpdate" parameterType="QnaDTO">
+		update qna set title={title}, contents=#{contents} where num=#{num}
+	</update>
+	
+	<delete id="setDelete" parameterType="Integer">
+		delete qna where num=#{num}
+	</delete>
+	<!-- totalCount pageing처리 -->
+	<select id="getCount" parameterType="PageMaker" resultType="Integer">
+		select count(num) from qna where 
+		<choose>
+			<when test="kind==1">
+				where title
+			</when>
+			<when test="kind==2">
+				where writer
+			</when>
+			<otherwise>
+				where contents
+			</otherwise>
+		</choose>
+		like '%'||#{search}||'%'
+	</select>
+	
+	<select id="getList" parameterType="PageMaker" resultType="QnaDTO"><!-- list로 받을지는 DAO에서 결정되니까 여기서는 DTO로 설정한다. -->
+		select * from 
+		(select rownum R, Q.* from 
+		(select * from qna 
+		<choose>
+			<when test="kind==1">
+				where title
+			</when>
+			<when test="kind==2">
+				where writer
+			</when>
+			<otherwise>
+				where contents
+			</otherwise>
+		</choose>
+		like '%'||#{search}||'%' order by ref desc, step asc) Q)
+		where R between #{startRow} and #{lastRow}
+	</select>
+	<!-- 답글 사전작업 -->
+	<update id="setReplyUpdate" parameterType="QnaDTO">
+		update qna set step+1 where 
+		ref= <include refid="subRef"/><!-- 조각난 query를 집어넣는 방법 -->
+		and 
+		step><include refid="subStep"/>
+	</update>
+	
+	<!-- 답글 달 때  -->
+	<insert id="setReply" parameterType="QnaDTO"><!-- select에서 file까지 안하고 하는 부분을 구현 -->
+		insert into qna values(notice_seq.nextval, #{title}, #{writer}, #{contents}, sysdate, 0, 
+		<include refid="subRef"/>, 
+		<include refid="subStep"/>+1 ,
+		(select depth from qna where num=#{num})+1 
+		)
+	</insert>
+	<!-- Result Map -->
+	<resultMap type="QnaDTO" id="qnaResult">
+		<!-- primary key -->
+		<id property="num" column="num"/><!-- property는 DTO의 멤버변수명, column은 DB에 컬럼명 -->
+		<result property="title" column="title"></result>
+		<result property="writer" column="writer"/>
+		<result property="contents" column="contents"/>
+		<result property="reg_date" column="reg_date"/>
+		<result property="hit" column="hit"/>
+		<result property="ref" column="ref"/>
+		<result property="step" column="step"/>
+		<result property="depth" column="depth"/>
+		<collection property="files" javaType="java.util.List" ofType="FileDTO" resultMap="fileResult"></collection><!-- 내부 Mapping을 이용한다.  --><!-- javaType="" --><!-- 외부타입일 때 ofType을 추가한다.  -->
+	</resultMap>
+	<resultMap type="FileDTO" id="fileResult">
+		<id property="fnum" column="fnum"/>
+		<result property="num" column="num"/>
+		<result property="fname" column="fname"/>
+		<result property="oname" column="oname"/>
+	</resultMap>
+	<select id="getSelect" parameterType="Integer" resultMap="qnaResult"><!-- 맵핍을 바로 하지 않고 resultMap을 사용해서 우리가 만들어서 매핍하쟈 -->
+		select * from qna Q full Join files F 
+		on (Q.num=F.num)
+		where Q.num=#{num} 
+	</select>
+</mapper>

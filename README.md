@@ -27,7 +27,7 @@
 
 #### b.root-context.xml 
 ####   - mybatis
-#####      1) connection - properties 파일 사용
+#####      1) connection - properties 파일 사용   : Dri
 ##### <!-- DirverManagerDataSource 등록 -->
 <bean class="org.springframework.jdbc.datasource.DriverManagerDataSource" id="dataSource">
 		<property name="username" value="${oracle.user}" />
@@ -47,6 +47,16 @@
 	<bean class="org.mybatis.spring.SqlSessionTemplate" id="sqlSession">
 		<constructor-arg name="sqlSessionFactory" ref="sqlSessionFactoryBean"/>
 	</bean>
+#### - fileUpload
+####   commonsMultPartResolver
+##### - properties 파일 위치 설정
+#####   propertyPlaceholderConfigurer
+
+## 5) Myvatis 설정
+#### - file들의 위치
+#####    src/main/resources 하위에 myBatis 디렉터리 생성
+#####    configue : mybatis 설정 파일들
+#####    mappers  : mybatis sql 파일들
 
 
 
